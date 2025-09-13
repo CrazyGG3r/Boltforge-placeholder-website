@@ -1,7 +1,138 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef,useMemo } from "react";
 import { motion, useAnimation } from "framer-motion";
+import { OrbitControls, useGLTF,Line} from "@react-three/drei";
+import { Canvas, useFrame } from "@react-three/fiber";
+import * as THREE from "three";
 
+
+
+// Terrain Component
+function Terrain(props) {
+  const { scene } = useGLTF("/3d shi/s2.glb"); // put your terrain .glb file in /public/3d shi/
+  return <primitive object={scene} {...props} />;
+}
+// Rock Component
+function Rock(props) {
+  const { scene } = useGLTF("/3d shi/s1.glb"); // path in public/
+  return <primitive object={scene} {...props} />;
+}
+var clicked = 0;
+
+// Lightning Component
+// Lightning Component
+// Lightning Component
+function Lightning({ target = [0, -1, -10], trigger }) {
+  const [points, setPoints] = useState([]);
+  const [opacity, setOpacity] = useState(0);
+
+  useEffect(() => {
+    if (!trigger) return;
+
+    if (clicked === 1) {
+      clicked = 0;
+
+      // build strike
+      const start = [Math.random() * 10 - 5, 150, Math.random() * -10];
+      const end = target;
+
+      const segments =200;
+      const newPoints = [];
+      for (let i = 0; i <= segments; i++) {
+        const t = i / segments;
+        const x = start[0] + (end[0] - start[0]) * t;
+        const y = start[1] + (end[1] - start[1]) * t;
+        const z = start[2] + (end[2] - start[2]) * t;
+        newPoints.push([
+          x + (Math.random() - 0.5) * 2,
+          y + (Math.random() - 0.5) * 2,
+          z + (Math.random() - 0.5) * 2,
+        ]);
+      }
+      setPoints(newPoints);
+      setOpacity(1);
+
+      // fade out
+      const fadeInterval = setInterval(() => {
+        setOpacity((o) => {
+          if (o <= 0.05) {
+            clearInterval(fadeInterval);
+            setPoints([]);   // <- remove the lightning completely
+            return 0;
+          }
+          return o - 0.05;   // smoother fade step
+        });
+      }, 50); // 50ms per step
+    }
+  }, [trigger, target]);
+
+  if (!points.length || opacity <= 0) return null;
+
+  return (
+    <>
+      <Line
+        points={points}
+        color="white"
+        lineWidth={5}
+        transparent
+        opacity={opacity}
+      />
+      <pointLight
+        position={target}
+        intensity={50 * opacity}
+        decay={2}
+        distance={40}
+        color="white"
+      />
+    </>
+  );
+}
+
+
+// --- Main Scene ---
+export function Background3D() {
+  const [strike, setStrike] = useState(false);
+
+  function handleClick() {
+    if (strike) return; // one strike at a time
+    setStrike(true);
+    clicked = 1;
+    setTimeout(() => setStrike(false), 1000); // reset trigger
+  }
+
+  return (
+    <Canvas
+      style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%" }}
+      camera={{ position: [0, 5, 25], fov: 50, near: 0.1, far: 2000 }}
+      onClick={handleClick}
+    >
+      <color attach="background" args={["#000000"]} />
+      <ambientLight intensity={0.4} />
+      <directionalLight position={[10, 15, 10]} intensity={1.5} />
+
+      {/* Orbit Controls (hand-held rotation) */}
+      <OrbitControls 
+        enableDamping={true} 
+        dampingFactor={0.1} 
+        rotateSpeed={0.6} 
+        zoomSpeed={0.8} 
+        panSpeed={0.6}
+        enablePan={false} // disables sideways movement
+      />
+
+      <Rock scale={2} position={[0, -1, -10]} />
+      <Terrain
+  scale={[5, 5, 5]}   // make bigger or smaller
+  position={[0, 3, -10]} // move it up/down/forward/back
+  rotation={[0, 0, 0]}    // tilt it if needed
+/>
+
+      <Lightning trigger={strike} target={[0, -1, -10]} />
+    </Canvas>
+  );
+}
+
+// --- Main Component ---
 export default function Home() {
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const [lines, setLines] = useState([]);
@@ -59,9 +190,8 @@ export default function Home() {
       const randomSound =
         zapSounds[Math.floor(Math.random() * zapSounds.length)];
       const audio = new Audio(randomSound);
-      audio.volume = 0.2; // range: 0.0 (silent) → 1.0 (max)
+      audio.volume = 0.2;
       audio.play();
-
 
       velocityRef.current = (Math.random() - 0.5) * 4;
 
@@ -182,6 +312,8 @@ export default function Home() {
 
   return (
     <div className="min-h-screen w-full bg-black cursor-none relative overflow-hidden flex flex-col">
+      <Background3D /> {/* 👈 New 3D cubes in background */}
+
       <div className="flex-1 flex items-center justify-center">
         <svg className="absolute top-0 left-0 w-full h-full pointer-events-none">
           <defs>
@@ -281,3 +413,4 @@ function MagicButton({ children }) {
     </div>
   );
 }
+useGLTF.preload("/models/rock.glb");
