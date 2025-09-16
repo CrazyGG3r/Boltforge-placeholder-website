@@ -1,9 +1,10 @@
 "use client";
 import { useState, useEffect, useRef,useMemo } from "react";
+import { PointLightHelper } from "three";
 import { motion, useAnimation } from "framer-motion";
-import { OrbitControls, useGLTF,Line} from "@react-three/drei";
+import { OrbitControls, useGLTF,Line,useHelper} from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
-import * as THREE from "three";
+
 
 
 
@@ -22,18 +23,19 @@ var clicked = 0;
 // Lightning Component
 // Lightning Component
 // Lightning Component
-function Lightning({ target = [0, -1, -10], trigger }) {
+function Lightning({ target = [0,0,0], trigger }) {
   const [points, setPoints] = useState([]);
   const [opacity, setOpacity] = useState(0);
 
   useEffect(() => {
     if (!trigger) return;
 
-    if (clicked === 1) {
+    if (clicked ===1) {
       clicked = 0;
 
       // build strike
-      const start = [Math.random() * 10 - 5, 150, Math.random() * -10];
+      const start = [  Math.random() * 2000 - 1000,  100, Math.random() * 2000 - 1000 ];
+
       const end = target;
 
       const segments =200;
@@ -79,7 +81,7 @@ function Lightning({ target = [0, -1, -10], trigger }) {
       />
       <pointLight
         position={target}
-        intensity={50 * opacity}
+        intensity={5000 * opacity}
         decay={2}
         distance={40}
         color="white"
@@ -87,7 +89,65 @@ function Lightning({ target = [0, -1, -10], trigger }) {
     </>
   );
 }
+const scale = 5;
 
+export function Lamp({ position = [0, 5, 0], color = "white", intensity = 1, distance = 10 }) {
+  const lightRef = useRef();
+
+  // Optional helper to visualize the lamp source
+  useHelper(lightRef, PointLightHelper, 0.5, color);
+
+  useEffect(() => {
+    if (lightRef.current) {
+      lightRef.current.position.set(...position);
+    }
+  }, [position]);
+
+  return (
+    <pointLight
+      ref={lightRef}
+      color={color}
+      intensity={intensity}
+      distance={distance}
+      castShadow
+    />
+  );
+}
+
+
+export function FlickerLamp({
+  position = [0, 5, 0],
+  color = "orange",
+  baseIntensity = 1,
+  flickerStrength = 0.3, // how much the lamp flickers
+  speed = 5,             // how fast it flickers
+  distance = 10
+}) {
+  const lightRef = useRef();
+
+  // Debug sphere to see lamp source
+  useHelper(lightRef, PointLightHelper, 0.5, color);
+
+  useFrame((state) => {
+    if (lightRef.current) {
+      // Randomized sine-based flicker
+      const t = state.clock.elapsedTime * speed;
+      const variation = (Math.sin(t * 2.5) + Math.random() * 0.5) * flickerStrength;
+      lightRef.current.intensity = baseIntensity + variation;
+    }
+  });
+
+  return (
+    <pointLight
+      ref={lightRef}
+      position={position}
+      color={color}
+      intensity={baseIntensity}
+      distance={distance}
+      castShadow
+    />
+  );
+}
 
 // --- Main Scene ---
 export function Background3D() {
@@ -103,12 +163,12 @@ export function Background3D() {
   return (
     <Canvas
       style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%" }}
-      camera={{ position: [0, 5, 25], fov: 50, near: 0.1, far: 2000 }}
+      camera={{ position: [23*scale,-12*scale, 23*scale], fov: 50, near: 0.1, far: 2000 }}
       onClick={handleClick}
     >
       <color attach="background" args={["#000000"]} />
       <ambientLight intensity={0.4} />
-      <directionalLight position={[10, 15, 10]} intensity={1.5} />
+      {/* <directionalLight position={[10, 15, 10]} intensity={15} color="#000000ff"/> */}
 
       {/* Orbit Controls (hand-held rotation) */}
       <OrbitControls 
@@ -117,17 +177,24 @@ export function Background3D() {
         rotateSpeed={0.6} 
         zoomSpeed={0.8} 
         panSpeed={0.6}
-        enablePan={false} // disables sideways movement
+        enablePan={true} // disables sideways movement
       />
 
       <Rock scale={2} position={[0, -1, -10]} />
       <Terrain
   scale={[5, 5, 5]}   // make bigger or smaller
-  position={[0, 3, -10]} // move it up/down/forward/back
+  position={[0, 0, 0]} // move it up/down/forward/back
   rotation={[0, 0, 0]}    // tilt it if needed
 />
+    <Lamp position={[20*scale, -8*scale, 27*scale]} color="white" intensity={1} distance={500} />
+  {/* <Lamp position={[-5, 3, 0]} color="blue" intensity={800} distance={1000}/> */}
+  <FlickerLamp position={[0, 3, 0]} color="#ffffff" baseIntensity={150} flickerStrength={10} speed={8} />
 
-      <Lightning trigger={strike} target={[0, -1, -10]} />
+      <Lightning trigger={strike} target={[20*scale,-8*scale, 27*scale]} /> {/* y,z,x */}
+
+       <Lightning trigger={strike} target={[20*scale,-8*scale, 27*scale]} /> {/* y,z,x */}
+
+        <Lightning trigger={strike} target={[20*scale,-8*scale, 27*scale]} /> {/* y,z,x */}
     </Canvas>
   );
 }
@@ -362,7 +429,7 @@ export default function Home() {
           ))}
         </svg>
 
-        <MagicButton>Zaapa</MagicButton>
+        {/* <MagicButton>Zaapa</MagicButton> */}
 
         <motion.img
           src="/images/cursor3.png"
