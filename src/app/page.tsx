@@ -4,6 +4,7 @@ import { PointLightHelper } from "three";
 import { motion, useAnimation } from "framer-motion";
 import { OrbitControls, useGLTF,Line,useHelper} from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
+import { Scale } from "lucide-react";
 
 
 
@@ -23,7 +24,7 @@ var clicked = 0;
 // Lightning Component
 // Lightning Component
 // Lightning Component
-function Lightning({ target = [0,0,0], trigger }) {
+function Lightning({ target = [0,0,0], trigger, click = 1 }) {
   const [points, setPoints] = useState([]);
   const [opacity, setOpacity] = useState(0);
 
@@ -118,7 +119,7 @@ export function Lamp({ position = [0, 5, 0], color = "white", intensity = 1, dis
 export function FlickerLamp({
   position = [0, 5, 0],
   color = "orange",
-  baseIntensity = 1,
+  baseIntensity = 1000,
   flickerStrength = 0.3, // how much the lamp flickers
   speed = 5,             // how fast it flickers
   distance = 10
@@ -149,21 +150,80 @@ export function FlickerLamp({
   );
 }
 
+function setCameraLimits(controls,place: number) {
+  switch (place) {
+    case 0: // only 180° horizontal
+      controls.minAzimuthAngle = -Math.PI / 2; // -90°
+      controls.maxAzimuthAngle =  Math.PI / 2; // +90°
+      controls.minPolarAngle = 0;              // no looking below horizon
+      controls.maxPolarAngle = Math.PI;        // full vertical
+      break;
+
+    case 1: // full 360°
+      controls.minAzimuthAngle = -Infinity;
+      controls.maxAzimuthAngle = Infinity;
+      controls.minPolarAngle = 0;
+      controls.maxPolarAngle = Math.PI;
+      break;
+
+    case 2: // only up-down
+      controls.minAzimuthAngle = 0;
+      controls.maxAzimuthAngle = 0;
+      controls.minPolarAngle = Math.PI / 4;   // 45° down
+      controls.maxPolarAngle = (3 * Math.PI) / 4; // 135° up
+      break;
+
+    default: // reset
+      controls.minAzimuthAngle = -Infinity;
+      controls.maxAzimuthAngle = Infinity;
+      controls.minPolarAngle = 0;
+      controls.maxPolarAngle = Math.PI;
+  }
+}
+var place = 0;
+export function CameraController({p}) {
+  const controlsRef = useRef();
+
+  useEffect(() => {
+    if (controlsRef.current) {
+      setCameraLimits(controlsRef.current, p);
+    }
+  }, [place]);
+
+  return (
+    <OrbitControls
+      ref={controlsRef}
+      enableDamping={true}
+      dampingFactor={0.1}
+      rotateSpeed={0.6}
+      panSpeed={  0.6}
+      enablePan={true}
+      enableZoom={false}          // ❌ disables zooming
+      screenSpacePanning={false}  // ✅ right-drag rotates like a player
+    />
+  );
+}
 // --- Main Scene ---
 export function Background3D() {
   const [strike, setStrike] = useState(false);
+  const [place, setPlace] = useState("A"); // start with zone A
 
   function handleClick() {
     if (strike) return; // one strike at a time
     setStrike(true);
     clicked = 1;
-    setTimeout(() => setStrike(false), 1000); // reset trigger
+    setTimeout(() => setStrike(false), 1000);
+    setPlace((prev) => {
+      if (prev === "A") return "B";
+      if (prev === "B") return "C";
+      return "A";
+    });
   }
 
   return (
     <Canvas
       style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%" }}
-      camera={{ position: [23*scale,-12*scale, 23*scale], fov: 50, near: 0.1, far: 2000 }}
+      camera={{ position: [23*scale,-12*scale, 23*scale], fov: 55, near: 0.1, far: 2000 }}
       onClick={handleClick}
     >
       <color attach="background" args={["#000000"]} />
@@ -175,10 +235,11 @@ export function Background3D() {
         enableDamping={true} 
         dampingFactor={0.1} 
         rotateSpeed={0.6} 
-        zoomSpeed={0.8} 
+        zoomSpeed={0.2} 
         panSpeed={0.6}
         enablePan={true} // disables sideways movement
       />
+      {/* <CameraController place={place} /> */}
 
       <Rock scale={2} position={[0, -1, -10]} />
       <Terrain
@@ -186,18 +247,17 @@ export function Background3D() {
   position={[0, 0, 0]} // move it up/down/forward/back
   rotation={[0, 0, 0]}    // tilt it if needed
 />
-    <Lamp position={[20*scale, -8*scale, 27*scale]} color="white" intensity={1} distance={500} />
-  {/* <Lamp position={[-5, 3, 0]} color="blue" intensity={800} distance={1000}/> */}
-  <FlickerLamp position={[0, 3, 0]} color="#ffffff" baseIntensity={150} flickerStrength={10} speed={8} />
+    <Lamp position={[21*scale, -7*scale, 25*scale]} color="orange" intensity={1000} distance={500} />
+  <Lamp position={[-5, 100, 0]} color="cyan" intensity={8000} distance={1000}/>
+  <FlickerLamp position={[20*scale, -8*scale, 27*scale]} color= "orange" baseIntensity={1500} flickerStrength={1000} speed={8} />
 
-      <Lightning trigger={strike} target={[20*scale,-8*scale, 27*scale]} /> {/* y,z,x */}
+      <Lightning trigger={strike} target={[21*scale, -7*scale, 25*scale]} /> {/* y,z,x */}
 
-       <Lightning trigger={strike} target={[20*scale,-8*scale, 27*scale]} /> {/* y,z,x */}
 
-        <Lightning trigger={strike} target={[20*scale,-8*scale, 27*scale]} /> {/* y,z,x */}
     </Canvas>
   );
 }
+
 
 // --- Main Component ---
 export default function Home() {
