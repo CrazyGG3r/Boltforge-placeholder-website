@@ -4,8 +4,29 @@ import { PointLightHelper } from "three";
 import { motion, useAnimation } from "framer-motion";
 import { OrbitControls, useGLTF,Line,useHelper} from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
+import { EffectComposer, Bloom } from "@react-three/postprocessing";
+
 import { Scale } from "lucide-react";
 
+export function Lantern({ position = [0, 0, 0], lightColor = "#ffcc88", intensity = 5 }) {
+  const { scene } = useGLTF("/3d shi/lantern.glb");
+
+  return (
+    <group position={position}>
+      {/* Lantern mesh (from Blender, with emission) */}
+      <primitive object={scene} />
+
+      {/* Actual light source */}
+      <pointLight
+        position={[0, 2, 0]}   // adjust so it sits in the "bulb" area
+        intensity={intensity}
+        distance={15}
+        color={lightColor}
+        castShadow
+      />
+    </group>
+  );
+}
 
 
 
@@ -35,11 +56,16 @@ function Lightning({ target = [0,0,0], trigger, click = 1 }) {
       clicked = 0;
 
       // build strike
-      const start = [  Math.random() * 2000 - 1000,  100, Math.random() * 2000 - 1000 ];
+    const start = [
+  18 + Math.random() * (21 - 18),  // x between 18–21
+  100,                             // y fixed
+  18 + Math.random() * (28 - 18)   // z between 18–28
+];
+
 
       const end = target;
 
-      const segments =200;
+      const segments =50;
       const newPoints = [];
       for (let i = 0; i <= segments; i++) {
         const t = i / segments;
@@ -235,23 +261,33 @@ export function Background3D() {
         enableDamping={true} 
         dampingFactor={0.1} 
         rotateSpeed={0.6} 
-        zoomSpeed={0.2} 
+        zoomSpeed={0.6} 
         panSpeed={0.6}
         enablePan={true} // disables sideways movement
       />
       {/* <CameraController place={place} /> */}
+      {/* Example lantern */}
+      <Lantern position={[19*scale, -5*scale, 19*scale]} intensity={50} lightColor="#ffcc88" />
 
+      {/* Bloom for glow effect */}
+      <EffectComposer>
+        <Bloom
+          intensity={1.5}          // glow strength
+          luminanceThreshold={0.2} // how bright before it glows
+          luminanceSmoothing={0.9} // smooth spread
+        />
+      </EffectComposer>
       <Rock scale={2} position={[0, -1, -10]} />
       <Terrain
   scale={[5, 5, 5]}   // make bigger or smaller
   position={[0, 0, 0]} // move it up/down/forward/back
   rotation={[0, 0, 0]}    // tilt it if needed
 />
-    <Lamp position={[21*scale, -7*scale, 25*scale]} color="orange" intensity={1000} distance={500} />
+    <Lamp position={[21*scale, -7*scale, 25*scale]} color="orange" intensity={10} distance={500} />
   <Lamp position={[-5, 100, 0]} color="cyan" intensity={8000} distance={1000}/>
   <FlickerLamp position={[20*scale, -8*scale, 27*scale]} color= "orange" baseIntensity={1500} flickerStrength={1000} speed={8} />
 
-      <Lightning trigger={strike} target={[21*scale, -7*scale, 25*scale]} /> {/* y,z,x */}
+      <Lightning trigger={strike} target={[19*scale, -10*scale, 22*scale]} /> {/* x,z,y */}
 
 
     </Canvas>
