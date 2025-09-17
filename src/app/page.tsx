@@ -319,7 +319,7 @@ export default function Home() {
 
   // track mouse
   useEffect(() => {
-    const move = (e) => setPos({ x: e.clientX, y: e.clientY });
+    const move = (e: MouseEvent) => setPos({ x: e.clientX, y: e.clientY });
     window.addEventListener("mousemove", move);
     return () => window.removeEventListener("mousemove", move);
   }, []);
